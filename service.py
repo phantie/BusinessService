@@ -2,19 +2,13 @@ __all__ = 'Service',
 
 from types import FunctionType
 
-
 class ServiceMeta(type):
-    def __new__(cls, name, bases, attrs):
-
-        attrs['funcs'] = {k for k, v in attrs.items()
-            if isinstance(v, FunctionType) and k != 'proxy'}
-
-        return super().__new__(cls, name, bases, attrs)
 
     def __getattribute__(cls, name):
-        if super().__getattribute__('proxy') and name in super().__getattribute__('funcs'):
-            result = super().__getattribute__('proxy')(
-                name, super().__getattribute__('__dict__'))
+        if super().__getattribute__('proxy') and \
+            isinstance(super().__getattribute__(name), FunctionType) and name != 'proxy':
+
+            result = super().__getattribute__('proxy')(name, super().__getattribute__('__dict__'))
 
             if result is not None:
                 return result
@@ -37,9 +31,10 @@ class Service(metaclass = ServiceMeta):
         you get name of a function and dictionary of a class.
         Primarily designed for usage statistics, metrics, logging, etc
 
-        If result returns None -> unmodifed value
-        else -> result.
-        You might as well use decorators to achieve this, but this is a more general approach
+        if result is None: return __dict__[name]
+        else: return result
+
+        You may as well use decorators to achieve this, but this is a more general approach
             that allows modifying objects in batch
 
         Example:
