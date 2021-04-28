@@ -5,10 +5,8 @@ from types import FunctionType
 class ServiceMeta(type):
 
     def __getattribute__(cls, name):
-        if super().__getattribute__('proxy') and \
-            isinstance(super().__getattribute__(name), FunctionType) and name != 'proxy':
-
-            result = super().__getattribute__('proxy')(name, super().__getattribute__('__dict__'))
+        if isinstance(super().__getattribute__(name), FunctionType) and name != 'proxy':
+            result = super().__getattribute__('proxy')(name, super().__getattribute__)
 
             if result is not None:
                 return result
@@ -16,22 +14,16 @@ class ServiceMeta(type):
         return super().__getattribute__(name)
 
 class Service(metaclass = ServiceMeta):
+
     def __new__(cls, *_, **__):
-        raise TypeError('Service class cannot be intiated')
+        raise TypeError('Service class cannot be intialized')
 
-    def __repr__(self):
-        return f'''{self.__class__.__name__}({
-            ', '.join((f'{name}={value!r}'for name, value in self.dependencies.items()))})'''
-
-    def __str__(self):
-        return f"{self.__class__.__name__}({', '.join(self.dependencies)})"
-
-    def proxy(name, __dict__):
+    def proxy(name, getattr):
         '''When you access a function of a service, 
-        you get name of a function and dictionary of a class.
+        you get name of a function and attr extractor for current class.
         Primarily designed for usage statistics, metrics, logging, etc
 
-        if result is None: return __dict__[name]
+        if result is None: return unmodified value
         else: return result
 
         You may as well use decorators to achieve this, but this is a more general approach
@@ -40,13 +32,13 @@ class Service(metaclass = ServiceMeta):
         Example:
             
         class MyService(Service):
-            def proxy(name, __dict__):
+            def proxy(name, getattr):
                 def log(*args, **kwargs):
                     print(*args, **kwargs)
 
                 def with_calls_logging(*args, **kwargs):
                     log(name, *args, **kwargs)
-                    return __dict__[name](*args, **kwargs)
+                    return getattr(name)(*args, **kwargs)
 
                 if name in ('foo', 'bar'):
                     return with_calls_logging
@@ -65,5 +57,4 @@ class Service(metaclass = ServiceMeta):
         assert MyService.bar([1, 1, 2, 3, 5]) == 12 # stdout: bar [1, 1, 2, 3, 5]
         assert MyService.baz() == 42                # stdout:
         '''
-
 
